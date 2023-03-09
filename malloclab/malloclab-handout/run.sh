@@ -1,1 +1,1 @@
-./mdriver -v -t traces
+clear && make && ./mdriver -v -t traces
