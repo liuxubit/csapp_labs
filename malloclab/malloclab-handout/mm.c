@@ -77,25 +77,16 @@ team_t team = {
 #define HDRP(bp) ((char*)(bp) - WSIZE)
 
 /* 获得脚部地址 */
-#define FTRP(bp) ((char*)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
+#define FTRP(bp) ((char*)bp + GET_SIZE(HDRP(bp)) - DSIZE)
 
 /* 计算后块的地址 */
-#define NEXT_BLKP(bp) ((char*)(bp) + GET_SIZE(HDRP(bp)))
+#define NEXT_BLKP(bp) ((char*)bp + GET_SIZE(HDRP(bp)))
 
 /* 计算前块的地址 */
-#define PREV_BLKP(bp) ((char*)(bp) - GET_SIZE((char*)(bp) - DSIZE))
-
-/* 前一个链表节点 */
-#define PREV_LINKNODE_RP(bp) ((char*)(bp))
-
-/* 后一个链表节点 */
-#define NEXT_LINKNODE_RP(bp) ((char*)(bp) + WSIZE)
-
-
+#define PREV_BLKP(bp) ((char*)bp - GET_SIZE((char*)(bp) - DSIZE))
 
 /* 指向序言块 */
-static void* heap_listp = NULL;
-static char* root = NULL;
+static void* heap_listp;
 
 /* 拓展块 */
 static void *extend_heap(size_t size);
@@ -108,11 +99,6 @@ static void place(char *bp, size_t asize);
 
 /* 合并空闲块 */
 static void *coalesce(void *bp);
-
-/* 插入node到空链表 */
-void insert_to_empty_list(char *bp);
-
-void fix_link_list(char *p);
 
 /* 打印 */
 // static void mm_printblock(int verbose, const char* func);
