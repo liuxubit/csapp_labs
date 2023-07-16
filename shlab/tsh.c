@@ -91,7 +91,6 @@ handler_t *Signal(int signum, handler_t *handler);
  */
 int main(int argc, char **argv) 
 {
-    printf("In main 0\n");
     char c;
     char cmdline[MAXLINE];
     int emit_prompt = 1; /* emit prompt (default) */
@@ -99,45 +98,37 @@ int main(int argc, char **argv)
     /* Redirect stderr to stdout (so that driver will get all output
      * on the pipe connected to stdout) */
     dup2(1, 2);
-    printf("In main 1\n");
 
     /* Parse the command line */
     while ((c = getopt(argc, argv, "hvp")) != EOF) {
         switch (c) {
         case 'h':             /* print help message */
             usage();
-	    break;
+            break;
         case 'v':             /* emit additional diagnostic info */
             verbose = 1;
-	    break;
+            break;
         case 'p':             /* don't print a prompt */
             emit_prompt = 0;  /* handy for automatic testing */
-	    break;
+            break;
         default:
-                usage();
+            usage();
         }
     }
-    printf("In main 2\n");
 
     /* Install the signal handlers */
 
     /* These are the ones you will need to implement */
     Signal(SIGINT,  sigint_handler);   /* ctrl-c */
-    printf("In main 2 1\n");
     Signal(SIGTSTP, sigtstp_handler);  /* ctrl-z */
-    printf("In main 2 2\n");
     Signal(SIGCHLD, sigchld_handler);  /* Terminated or stopped child */
 
-    printf("In main 3\n");
 
     /* This one provides a clean way to kill the shell */
     Signal(SIGQUIT, sigquit_handler); 
-    printf("In main 4\n");
 
     /* Initialize the job list */
     initjobs(jobs);
-
-    printf("In main 5\n");
 
     /* Execute the shell's read/eval loop */
     while (1) {
@@ -154,12 +145,9 @@ int main(int argc, char **argv)
 	    exit(0);
 	}
 
-    printf("In main 6\n");
-
 	/* Evaluate the command line */
 	eval(cmdline);
 
-    printf("In main 7\n");
 	fflush(stdout);
 	fflush(stdout);
     } 
@@ -564,7 +552,8 @@ handler_t *Signal(int signum, handler_t *handler)
     sigemptyset(&action.sa_mask); /* block sigs of type being handled */
     action.sa_flags = SA_RESTART; /* restart syscalls if possible */
 
-	unix_error("Signal error");
+    if (sigaction(signum, &action, &old_action) < 0)
+        unix_error("Signal error");
     return (old_action.sa_handler);
 }
 
