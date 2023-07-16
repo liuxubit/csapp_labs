@@ -16,6 +16,9 @@ jobs
 /bin/echo tsh> fg %1
 fg %1
 
+/bin/echo tsh> jobs
+jobs
+
 /bin/echo tsh> /bin/ps a
 /bin/ps a
 
