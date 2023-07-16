@@ -191,12 +191,17 @@ void eval(char *cmdline)
         sigprocmask(SIG_BLOCK, &mask, &prev_mask);
         if ((pid = Fork()) == 0)
         {
+            sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+            setpgid(0, 0);
             if (execve(argv[0], argv, environ) < 0)
             {
                 printf("%s: Command not found\n", argv[0]);
                 exit(0);
             }
         }
+
+        addjob(jobs, pid, (bg?BG:FG), cmdline);
+        sigprocmask(SIG_SETMASK, &prev_mask, NULL);
 
         if (!bg)
         {
@@ -206,8 +211,6 @@ void eval(char *cmdline)
             }
         }
         else {
-            addjob(jobs, pid, (bg?BG:FG), cmdline);
-            sigprocmask(SIG_SETMASK, &prev_mask, NULL);
             printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
         }
     }
@@ -321,6 +324,10 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while (pid == fgpid(jobs))
+    {
+        usleep(100);
+    }
     return;
 }
 
@@ -347,7 +354,7 @@ void sigchld_handler(int sig)
             deletejob(jobs, pid);
         }
     }
-    if (errno != ECHILD)
+    if (pid != 0 && errno != ECHILD)
     {
         printf("waitpid error\n");
     }
@@ -362,6 +369,9 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    pid_t pid = fgpid(jobs);
+    deletejob(jobs, pid);
+    kill(-pid, sig);
     return;
 }
 
@@ -372,6 +382,9 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    pid_t pid = fgpid(jobs);
+    getjobpid(jobs, pid)->state = ST;
+    kill(-pid, sig);
     return;
 }
 
