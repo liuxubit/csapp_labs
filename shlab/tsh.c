@@ -3,6 +3,7 @@
  * 
  * <Put your name and login ID here>
  */
+#include <asm-generic/errno-base.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -173,10 +174,11 @@ void eval(char *cmdline)
     int bg;
     pid_t pid;
     int status;
+    sigset_t mask, prev_mask;
 
     strcpy(buf, cmdline);
-
     bg = parseline(cmdline, argv);
+    sigemptyset(&mask);
 
     if (!argv[0])
     {
@@ -185,6 +187,8 @@ void eval(char *cmdline)
 
     if (!builtin_cmd(argv))
     {
+        sigaddset(&mask, SIGCHLD);
+        sigprocmask(SIG_BLOCK, &mask, &prev_mask);
         if ((pid = Fork()) == 0)
         {
             if (execve(argv[0], argv, environ) < 0)
@@ -202,6 +206,8 @@ void eval(char *cmdline)
             }
         }
         else {
+            addjob(jobs, pid, (bg?BG:FG), cmdline);
+            sigprocmask(SIG_SETMASK, &prev_mask, NULL);
             printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
         }
     }
@@ -292,6 +298,12 @@ int builtin_cmd(char **argv)
     {
         return 1;
     }
+    if (!strcmp(argv[0], "jobs"))
+    {
+        listjobs(jobs);
+        return 1;
+        return 1;
+    }
     
     return 0;     /* not a builtin command */
 }
@@ -325,6 +337,21 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    pid_t pid;
+    int old_errno = errno;
+    int status;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+    {
+        if (WIFEXITED(status))
+        {
+            deletejob(jobs, pid);
+        }
+    }
+    if (errno != ECHILD)
+    {
+        printf("waitpid error\n");
+    }
+    errno = old_errno;
     return;
 }
 
