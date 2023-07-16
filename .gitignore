@@ -1,0 +1,4 @@
+malloclab/malloclab-handout/mdriver
+malloclab/malloclab-handout/mdriver.o
+malloclab/malloclab-handout/mm.o
+malloclab/malloclab-handout/mm_backup.c
