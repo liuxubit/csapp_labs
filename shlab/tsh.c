@@ -51,6 +51,7 @@ struct job_t {              /* The job struct */
 struct job_t jobs[MAXJOBS]; /* The job list */
 /* End global variables */
 
+pid_t Fork();
 
 /* Function prototypes */
 
@@ -90,6 +91,7 @@ handler_t *Signal(int signum, handler_t *handler);
  */
 int main(int argc, char **argv) 
 {
+    printf("In main 0\n");
     char c;
     char cmdline[MAXLINE];
     int emit_prompt = 1; /* emit prompt (default) */
@@ -97,6 +99,7 @@ int main(int argc, char **argv)
     /* Redirect stderr to stdout (so that driver will get all output
      * on the pipe connected to stdout) */
     dup2(1, 2);
+    printf("In main 1\n");
 
     /* Parse the command line */
     while ((c = getopt(argc, argv, "hvp")) != EOF) {
@@ -110,23 +113,31 @@ int main(int argc, char **argv)
         case 'p':             /* don't print a prompt */
             emit_prompt = 0;  /* handy for automatic testing */
 	    break;
-	default:
-            usage();
-	}
+        default:
+                usage();
+        }
     }
+    printf("In main 2\n");
 
     /* Install the signal handlers */
 
     /* These are the ones you will need to implement */
     Signal(SIGINT,  sigint_handler);   /* ctrl-c */
+    printf("In main 2 1\n");
     Signal(SIGTSTP, sigtstp_handler);  /* ctrl-z */
+    printf("In main 2 2\n");
     Signal(SIGCHLD, sigchld_handler);  /* Terminated or stopped child */
+
+    printf("In main 3\n");
 
     /* This one provides a clean way to kill the shell */
     Signal(SIGQUIT, sigquit_handler); 
+    printf("In main 4\n");
 
     /* Initialize the job list */
     initjobs(jobs);
+
+    printf("In main 5\n");
 
     /* Execute the shell's read/eval loop */
     while (1) {
@@ -143,8 +154,12 @@ int main(int argc, char **argv)
 	    exit(0);
 	}
 
+    printf("In main 6\n");
+
 	/* Evaluate the command line */
 	eval(cmdline);
+
+    printf("In main 7\n");
 	fflush(stdout);
 	fflush(stdout);
     } 
@@ -165,7 +180,53 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+    char *argv[MAXARGS];
+    char buf[MAXLINE];
+    int bg;
+    pid_t pid;
+    int status;
+
+    strcpy(buf, cmdline);
+
+    bg = parseline(cmdline, argv);
+
+    if (!argv[0])
+    {
+        return;
+    }
+
+    if (!builtin_cmd(argv))
+    {
+        if ((pid = Fork()) == 0)
+        {
+            if (execve(argv[0], argv, environ) < 0)
+            {
+                printf("%s: Command not found\n", argv[0]);
+                exit(0);
+            }
+        }
+
+        if (!bg)
+        {
+            if (waitpid(pid, &status, 0) < 0)
+            {
+                unix_error("waitfg: waitpid error");
+            }
+        }
+        else {
+            printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+        }
+    }
     return;
+}
+
+pid_t Fork() {
+    pid_t pid;
+    if ((pid = fork()) < 0)
+    {
+        unix_error("Fork error\n");
+    }
+    return pid;
 }
 
 /* 
@@ -186,32 +247,36 @@ int parseline(const char *cmdline, char **argv)
     strcpy(buf, cmdline);
     buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
     while (*buf && (*buf == ' ')) /* ignore leading spaces */
-	buf++;
+    {
+        buf++;
+    }
 
     /* Build the argv list */
     argc = 0;
     if (*buf == '\'') {
-	buf++;
-	delim = strchr(buf, '\'');
+        buf++;
+        delim = strchr(buf, '\'');
     }
     else {
-	delim = strchr(buf, ' ');
+        delim = strchr(buf, ' ');
     }
 
     while (delim) {
-	argv[argc++] = buf;
-	*delim = '\0';
-	buf = delim + 1;
-	while (*buf && (*buf == ' ')) /* ignore spaces */
-	       buf++;
+        argv[argc++] = buf;
+        *delim = '\0';
+        buf = delim + 1;
+        while (*buf && (*buf == ' ')) /* ignore spaces */
+        {
+            buf++;
+        }
 
-	if (*buf == '\'') {
-	    buf++;
-	    delim = strchr(buf, '\'');
-	}
-	else {
-	    delim = strchr(buf, ' ');
-	}
+        if (*buf == '\'') {
+            buf++;
+            delim = strchr(buf, '\'');
+        }
+        else {
+            delim = strchr(buf, ' ');
+        }
     }
     argv[argc] = NULL;
     
@@ -231,6 +296,15 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+    if (!strcmp(argv[0], "quit"))
+    {
+        exit(0);
+    }
+    if (!strcmp(argv[0], "&"))
+    {
+        return 1;
+    }
+    
     return 0;     /* not a builtin command */
 }
 
@@ -490,7 +564,6 @@ handler_t *Signal(int signum, handler_t *handler)
     sigemptyset(&action.sa_mask); /* block sigs of type being handled */
     action.sa_flags = SA_RESTART; /* restart syscalls if possible */
 
-    if (sigaction(signum, &action, &old_action) < 0)
 	unix_error("Signal error");
     return (old_action.sa_handler);
 }
