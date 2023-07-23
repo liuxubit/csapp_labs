@@ -476,7 +476,6 @@ total            3896K
 
 总之，/proc 为我们提供了一种查看和更改系统状态、进程状态和内核参数的方法。但是需要注意的是，在读取和写入 /proc 目录下的文件时，需要有足够的权限才可以进行操作。
 ```
-
 ## shlab hw：
 - op:
 
@@ -511,8 +510,5 @@ total            3896K
   - 15: 综合
   - 16: 测试其他进程给的SIGTSTP 和 SIGINT
 
-
-
-
-  
-
+## reference：
+https://gitee.com/sun-hongwei8011/csapp-lab
