@@ -1,2 +1,2 @@
 # csapp_labs
-malloc labs
+shlab labs
